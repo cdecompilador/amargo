@@ -10,21 +10,21 @@ You want to create a dynamic library? `amargo new mylib --dylib`. Wanna test the
 For the moment a simple `cargo b` should work
  
 #### Platforms
-- [x] Windows 7,8,10,11
-- [?] Linux (not tested)
-- [?] macOS (not tested)
+- ✔️ Windows 7,8,10,11
+- ⚠️ Linux (not tested)
+- ⚠️ macOS (not tested)
  
 #### Objectives
-- [x] Minimal functional state (create binary project and compile with release or debug)
-- [x] Support more compilers than clang
-- [] Support more types of crate (dynamic libs, static libs, header only)
-- [?] Don't recompile if isn't needed and compile just the needed sources
-	- [x] Incremental compilation for sources
-	- [] Incremental compilation for headers (needs parsing)
-- [ ] Have some sort of config file (maybe using toml)
-- [ ] Support tests
-- [ ] Support benchmarks
-- [ ] Maybe external dependencies? (using vcpkg or a custom dependency system)
+- ✔️ Minimal functional state (create binary project and compile with release or debug)<br>
+- ✔️ Support more compilers than clang<br>
+- ❌ Support more types of crate (dynamic libs, static libs, header only)<br>
+- ⚠️ Don't recompile if isn't needed and compile just the needed sources<br>
+    - ✔️ Incremental compilation for sources<br>
+	- ❌ Incremental compilation for headers (needs parsing)<br>
+- ❌ Have some sort of config file (maybe using toml)<br>
+- ❌ Support tests<br>
+- ❌ Support benchmarks<br>
+- ❌ Maybe external dependencies? (using vcpkg or a custom dependency system)<br>
  
 ## Contribution
 Pls help me, through the code there are a lot of TODOs if you wanna help, but pls comment a lot what
