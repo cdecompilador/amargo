@@ -11,19 +11,22 @@ For the moment a simple `cargo b` should work
  
 #### Platforms
 - [x] Windows 7,8,10,11
-- [?] Linux
-- [?] macOS
+- [?] Linux (not tested)
+- [?] macOS (not tested)
  
 #### Objectives
 - [x] Minimal functional state (create binary project and compile with release or debug)
-- [ ] Support more compilers than clang
-- [ ] Don't recompile if isn't needed and compile just the needed sources
+- [x] Support more compilers than clang
+- [] Support more types of crate (dynamic libs, static libs, header only)
+- [?] Don't recompile if isn't needed and compile just the needed sources
+	- [x] Incremental compilation for sources
+	- [] Incremental compilation for headers (needs parsing)
 - [ ] Have some sort of config file (maybe using toml)
 - [ ] Support tests
 - [ ] Support benchmarks
 - [ ] Maybe external dependencies? (using vcpkg or a custom dependency system)
  
-### Contribution
-Pls help me, through the code there are a lot of TODOs if you wanna help but pls comment a lot what
+## Contribution
+Pls help me, through the code there are a lot of TODOs if you wanna help, but pls comment a lot what
 you do and don't be afraid of creating new TODOs
 
