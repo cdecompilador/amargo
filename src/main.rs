@@ -49,6 +49,9 @@ enum Error {
     /// not an amargo project
     NotAProject(PathBuf),
 
+    /// Cannot read a certain file
+    CannotRead(PathBuf, std::io::Error),
+
     /// While recursive listing files in `src` or `include` some unexpected io
     /// error happened
     FileListing(walkdir::Error),
@@ -59,30 +62,125 @@ enum Error {
     /// Error when command cannot be spawned
     ProcessCreation(PathBuf, std::io::Error),
 
+    /// Raised when on include relationship lookup some include or includes
+    /// couldn't be resolved
+    MissingIncludes(PathBuf, Vec<String>),
+
     /// Error while compilating
+    ///
     /// TODO: For the moment this contains nothing, but in the future I'd like
     /// the tool to have a check subcommand like cargo that statically checks 
     CompilationError,
 
     /// Couldn't find a default compiler
+    ///
     /// TODO: In the future this might have an associated `PathBuf` because it
     /// can be a custom compiler path what couldn't be found
     NoCompilerFound
 }
 
-/// A builder for compilation of a native library.
+struct Imports {
+    source: PathBuf,
+    includes: Vec<PathBuf>
+}
+
+impl Imports {
+    /// Given a `source` path and the various include dirs, get the paths of 
+    /// its includes
+    ///
+    /// FIXME: This is probably so slow to call multriple times, a better 
+    /// implementation must be made in the future
+    /// FIXME: Also must be improved the implementation as it does not resolve
+    /// header <- header <- source, does not detect double indirection, a 
+    /// possible solution would be to preprocess all the sources and compare
+    /// not just the date but the checksum of the preprocessed file
+    fn from(source: PathBuf, include_dirs: Vec<PathBuf>) -> Result<Self, Error> {
+        let mut imports = Imports {
+            source,
+            includes: Vec::new()
+        };
+
+        // Extract the source data
+        let source_data = fs::read_to_string(&imports.source)
+            .map_err(|e| Error::CannotRead(imports.source.clone(), e))?;
+
+        // Find in the source all the #include "<header>" then lookup inside 
+        // the include dirs and add the path to the includes
+        let re = regex::Regex::new(r#"^#include\s+"(?P<header>\w*\.h)"$"#)
+            .unwrap();
+        let caps = re.captures_iter(&source_data[..]);
+        let mut headers = caps.map(|cap| cap["header"].to_string())
+            .collect::<Vec<String>>();
+        for include_dir in include_dirs {
+            // Iterate every entry in the `include_dir`, check if its a header
+            // and if it is, check if matches the name of the headers that the
+            // source imports
+            for entry in walkdir::WalkDir::new(include_dir) {
+                // DirEntry -> PathBuf
+                let path = entry.map_err(Error::FileListing)?.into_path();
+
+                if path.is_file() {
+                    let mut idx = 0;
+                    let header_path = headers.iter().enumerate().find_map(|(i, h)| 
+                        if path.file_name().unwrap() 
+                            == <String as AsRef<OsStr>>::as_ref(h) {
+                            idx = i;
+                            // FIXME: Can this clone be avoided??
+                            Some(path.clone())
+                        } else {
+                            None
+                        }
+                    );
+                    
+                    // If the entry corresponded to a include remove it from
+                    // the `headers` and push in into `Self.includes`
+                    if let Some(header_path) = header_path {
+                        headers.remove(idx);
+                        imports.includes.push(header_path);
+                    }
+                }
+            }
+        }
+
+        // Check if all the includes were resolved
+        if headers.len() != 0 {
+            // minimize
+            return Err(Error::MissingIncludes(imports.source, headers));
+        }
+
+        Ok(imports)
+    }
+}
+
+/// An abstraction around the build process of a crate, in the future this
+/// might be just a trait with a check and build method to allow different 
+/// types of crates
 #[derive(Clone, Debug, Default)]
 struct Build<'a> {
+    /// The project name extracted from the working directory
+    ///
+    /// TODO: Extract it from the config file
     project_name: OsString,
+
+    /// The include dirs for .h (for the moment just /include)
     include_directories: Vec<PathBuf>,
-    // definitions: Vec<(String, Option<String>),
+
+    /// The objects needed at linkage
     objects: Vec<PathBuf>,
-    flags: Vec<String>,
-    // ar_flags: Vec<String>,
+
+    /// The sources need to compile, not necesarely all the project sources
+    /// just the ones that need to recompile
     sources: Vec<PathBuf>,
-    // target: Option<String>,
+
+    /// "release" or "debug" for the moment
     mode: &'a str,
+
+    /// The tool used for compilation, abstraction over the compiler, this
+    /// in the future must encompass linker, assembler and even external tools
+    /// to reduce binary/library size
     tool: Tool,
+
+    /// The directory where to put the target (influenced by the `mode`)
     out_dir: PathBuf
 }
 
@@ -568,7 +666,15 @@ fn main() -> Result<(), Error> {
                             .value_delimiter(" ")
                             .last(true)
                             .help("Provide cli args to the executable")))
+                    .subcommand(SubCommand::with_name("clean")
+                        .alias("c")
+                        .about("Cleans the build targets if the application"))
                     .get_matches();
+
+    // Get the working directory
+    let working_dir = std::env::current_dir()
+        .and_then(|d| d.canonicalize())
+        .map_err(|e| Error::CurrentDirInvalid(PathBuf::from("."), e))?;
 
     if let Some(matches) = matches.subcommand_matches("new") {
         // Select the `CrateType`, if none is provided select Binary
@@ -587,12 +693,8 @@ fn main() -> Result<(), Error> {
         let project_path = matches.value_of("project_name").unwrap();
         create_project(project_path, crate_type)?;
     } else if let Some(matches) = matches.subcommand_matches("build") {
-        let project_name = {
-            let working_dir = std::env::current_dir()
-                .and_then(|d| d.canonicalize())
-                .map_err(|e| Error::CurrentDirInvalid(PathBuf::from("."), e))?;
-            working_dir.components().last().unwrap().as_os_str().to_os_string()
-        };
+        let project_name =
+            working_dir.components().last().unwrap().as_os_str().to_os_string();
         let it = Instant::now();
 
         // Print that compilation has started
@@ -627,12 +729,8 @@ fn main() -> Result<(), Error> {
 
     } else if let Some(matches) = matches.subcommand_matches("run") {
         // TODO: This later might be in a *.toml file
-        let project_name = {
-            let working_dir = std::env::current_dir()
-                .and_then(|d| d.canonicalize())
-                .map_err(|e| Error::CurrentDirInvalid(PathBuf::from("."), e))?;
-            working_dir.components().last().unwrap().as_os_str().to_os_string()
-        };
+        let project_name =
+            working_dir.components().last().unwrap().as_os_str().to_os_string();
         let it = Instant::now();
 
         // Print that compilation has started
@@ -685,6 +783,10 @@ fn main() -> Result<(), Error> {
             style("Running").cyan(), 
             executable_path.display(),
             &args[..].join(" "));
+
+    } else if let Some(matches) = matches.subcommand_matches("clean") {
+        fs::remove_dir_all(working_dir.join("target"))
+            .expect("Cannot remove target dir");
     }
 
     Ok(())

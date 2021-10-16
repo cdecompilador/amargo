@@ -20,6 +20,7 @@ dependencies = [
  "educe",
  "indicatif",
  "parse-display",
+ "regex",
  "tokio",
  "walkdir",
  "which",
