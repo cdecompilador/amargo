@@ -18,6 +18,7 @@ use crate::{
 
 use clap::{App, SubCommand, Arg};
 use console::style;
+use log::{trace, warn, info};
 
 // Import the startup binaries
 const BINARY_MAIN: &str = include_str!(concat!(
@@ -105,13 +106,15 @@ fn build_project(mode: &str) -> Result<bool, Error> {
     // compilation stage, so they might need to compile to different locations
     // TODO: Also check includes for incremental compilation
     Ok(Build::new(mode)?
-        .include("include")
+        .include("include")?
         .files("src")?
         .compile()?
         .link()?)
 }
 
 fn main() -> Result<(), Error> {
+    // Initialize the log backend and retrieve the argument matches
+    pretty_env_logger::init();
     let matches = App::new("amargo")
                     .subcommand(SubCommand::with_name("new")
                         .about("Creates a new amargo project")
@@ -150,6 +153,7 @@ fn main() -> Result<(), Error> {
     let working_dir = std::env::current_dir()
         .and_then(|d| d.canonicalize())
         .map_err(|e| Error::CurrentDirInvalid(PathBuf::from("."), e))?;
+    info!("Working dir {:?}", &working_dir);
 
     if let Some(matches) = matches.subcommand_matches("new") {
         // Select the `CrateType`, if none is provided select Binary
@@ -163,6 +167,8 @@ fn main() -> Result<(), Error> {
             CrateType::Binary
         };
 
+        info!("Selected project creation option: `{}`", crate_type);
+
         // Get the project path creation (that is the same as the name) and 
         // create it
         let project_path = matches.value_of("project_name").unwrap();
@@ -171,6 +177,8 @@ fn main() -> Result<(), Error> {
         let project_name =
             working_dir.components().last().unwrap().as_os_str().to_os_string();
         let it = Instant::now();
+
+        info!("Selected build option of {:?}", &project_name);
 
         // Print that compilation has started
         println!("{:>12} {:?}", 
@@ -206,6 +214,7 @@ fn main() -> Result<(), Error> {
         // TODO: This later might be in a *.toml file
         let project_name =
             working_dir.components().last().unwrap().as_os_str().to_os_string();
+        info!("Selected run option of {:?}", &project_name);
         let it = Instant::now();
 
         // Print that compilation has started

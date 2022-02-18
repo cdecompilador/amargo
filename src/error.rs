@@ -16,6 +16,10 @@ pub enum Error {
     /// create and then write)
     CannotCreate(PathBuf, std::io::Error),
 
+    /// Impossible to create an object (also used in case is impossible to 
+    /// create and then write)
+    CannotRemove(PathBuf, std::io::Error),
+
     /// While building, running or checking the program has relized that this is
     /// not an amargo project
     NotAProject(PathBuf),
@@ -47,7 +51,13 @@ pub enum Error {
     ///
     /// TODO: In the future this might have an associated `PathBuf` because it
     /// can be a custom compiler path what couldn't be found
-    NoCompilerFound
+    NoCompilerFound,
+
+    /// Project couldn't be linked (provide an explanation)
+    ///
+    /// TODO: Instead of a String use a new Error type only for linking errors, this
+    /// should be done when output parsing is avaible
+    CannotLink(String),
 }
 
 

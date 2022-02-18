@@ -10,8 +10,12 @@ clap = "2.33.3"
 console = "0.14.1"
 educe = { version = "0.4.18", features = ["Default"] }
 indicatif = "0.16.2"
+log = "0.4.14"
 parse-display = "0.5.2"
+pretty_env_logger = "0.4.0"
 regex = "1.5.4"
 tokio = { version = "1.12.0", features = ["process"] }
 walkdir = "2.3.2"
 which = "4.2.2"
+
+[features]

@@ -25,10 +25,12 @@ For the moment a simple `cargo install --path .` should work
 #### Objectives
 - ✔️ Minimal functional state (create binary project and compile with release or debug)<br>
 - ✔️ Support more compilers than clang<br>
-- ❌ Support more types of crate (dynamic libs, static libs, header only)<br>
+- ❌ Support more types of crate (dynamic libs, static libs, header only) 
+        **IN PROGRESS** <br>
 - ⚠️ Don't recompile if isn't needed and compile just the needed sources<br>
-    - ✔️ Incremental compilation for sources<br>
-	- ⚠️ Incremental compilation for headers (needs parsing) **IN PROGRESS** <br>
+    - ✔️ Incremental compilation for sources <br>
+	- ✔️ Incremental compilation for headers <br>
+    - ❌Incremental compilation for source that include source (maybe forbid this?)
 - ❌ Have some sort of config file (maybe using toml)<br>
 - ❌ Have an installation dir and command, like `.amargo/bin` and `.amargo/lib` <br>
 - ❌ Support tests<br>
