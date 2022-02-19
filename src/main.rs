@@ -12,7 +12,7 @@ mod build;
 
 use crate::{
     build::Build,
-    error::Error,
+    error::{Result, Error},
     config::{ProjectType, BuildType, ProjectConfig, Config, Cli, Command, Project}
 };
 
@@ -31,11 +31,11 @@ const EXE_EXTENSION: &str = "exe";
 #[cfg(not(target_os = "windows"))]
 const EXE_EXTENSION: &str = "out";
 
-/// Created a project of type `CrateType` on the location and with name `path`
+/// Create a project with the given configuration and kind
 fn create_project(
     config:       &ProjectConfig,
     project_type: ProjectType
-) -> Result<(), Error> {
+) -> Result<()> {
     let project_config = config.config.as_ref().unwrap();
     let project_name   = &project_config.project.name;
     let project_path   = config.working_dir.join(project_name);
@@ -63,14 +63,14 @@ fn create_project(
     // Print to console that the package has been created
     println!("{:>12} {} `{}` package", 
         style("Created").cyan(), 
-        project_type.to_string(),
+        project_type,
         project_name);
 
     Ok(())
 }
 
-/// Builds the binary of a project
-fn build_project(config: &ProjectConfig, mode: BuildType) -> Result<bool, Error> {
+/// Builds the binary of a project given a configuration and a build type
+fn build_project(config: &ProjectConfig, mode: BuildType) -> Result<bool> {
     // Compile and link the project given the mode
     Build::new(config, mode)?
         .include("include")?
@@ -79,7 +79,7 @@ fn build_project(config: &ProjectConfig, mode: BuildType) -> Result<bool, Error>
         .link()
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<()> {
     // Initialize the log backend and retrieve the argument matches
     pretty_env_logger::init();
     
@@ -102,8 +102,6 @@ fn main() -> Result<(), Error> {
     };
 
     info!("Working dir {:?}", &config.working_dir);
-
-
 
     match &config.cli.commands {
         // Create a new project with the `project_name` provided on the cli
@@ -149,10 +147,10 @@ fn main() -> Result<(), Error> {
 
             } else {
                 let elapsed = (Instant::now() - it).as_secs_f64();
-                println!("{:>12} {} {:?} in {:.2}s", 
+                println!("{:>12} {} {} in {:.2}s", 
                     style("Finished").cyan(), 
                     project_name,
-                    mode.to_string(), 
+                    mode, 
                     elapsed);
             }
         },
@@ -178,17 +176,12 @@ fn main() -> Result<(), Error> {
 
             // Print to console that compilation has finished
             if !changes {
-                println!("{:>12} {} {:?} Already up to date", 
-                    style("Finished").cyan(), 
-                    project_name,
-                    mode.to_string());
+                println!("{:>12} {} {} Already up to date", 
+                    style("Finished").cyan(), project_name, mode);
             } else {
                 let elapsed = (Instant::now() - it).as_secs_f64();
-                println!("{:>12} {} {:?} in {:.2}s", 
-                    style("Finished").cyan(), 
-                    project_name,
-                    mode.to_string(), 
-                    elapsed);
+                println!("{:>12} {} {} in {:.2}s", 
+                    style("Finished").cyan(), project_name, mode, elapsed);
             }
 
             // Generate the path to the executable, get the project name (that is
@@ -206,9 +199,7 @@ fn main() -> Result<(), Error> {
 
             // Print that the executable is being run
             println!("{:>12} `{} {:?}`\n", 
-                style("Running").cyan(), 
-                executable_path.display(),
-                exe_args);
+                style("Running").cyan(), executable_path.display(), exe_args);
         },
         Command::Clean => {
             // Check if this an amargo project 

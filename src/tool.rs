@@ -1,18 +1,17 @@
 use std::{
     path::{Path, PathBuf},
-    collections::VecDeque,
     process::Command,
     ffi::OsString,
 };
 
 use crate::{
-    error::Error,
+    error::*,
     build::Object,
 };
 
 /// Find an avaible tool on the system
 /// TODO: On windows try to put mscv on the environment first
-fn find_tool() -> Result<(PathBuf, ToolFamily), Error> {
+fn find_tool() -> Result<(PathBuf, ToolFamily)> {
     // Macro that checks if command exists
     macro_rules! exists_command {
         ($command_name:literal) => {
@@ -84,7 +83,7 @@ impl Default for Tool {
 
 impl Tool {
     /// Instantiates a new tool given the compiler `path`
-    pub fn new(_path: Option<PathBuf>) -> Self { 
+    pub fn new() -> Self { 
         // Extract the compiler family and path
         // TODO: First try to retrieve this from the config file
         let (path, family) = find_tool().unwrap();
@@ -96,7 +95,7 @@ impl Tool {
         }
     }
 
-    /// Add an argument
+    /// Add an arbitrary argument
     pub fn push_cc_arg(&mut self, arg: OsString) {
         self.args.push(arg);
     }
@@ -107,7 +106,7 @@ impl Tool {
     /// command returned will already have the initial arguments and environment
     /// variables configured.
     pub fn to_build_command(
-        &self, include_dirs: &Vec<PathBuf>, 
+        &self, include_dirs: &[PathBuf], 
     ) -> Command {
         let include_dirs = include_dirs.iter()
             .map(|p| {

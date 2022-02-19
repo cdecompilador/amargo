@@ -1,3 +1,5 @@
+//! Contains all the related 
+
 use std::{
     time::SystemTime,
     path::{Path, PathBuf},
@@ -8,8 +10,8 @@ use std::{
 use crate::{
     EXE_EXTENSION,
     tool::Tool,
-    error::Error,
-    config::{ProjectType, BuildType, Config, ProjectConfig}
+    error::*,
+    config::{BuildType, ProjectConfig}
 };
 
 use log::info;
@@ -21,8 +23,13 @@ trait FromDir: From<(PathBuf, SystemTime)> {
 
     /// Return a list of `Self` through navigating recursively a directory and 
     /// selecting the ones with extension `EXT`
-    fn from_dir<P: AsRef<Path>>(dir: P) -> Result<Vec<Self>, Error> {
+    fn from_dir<P: AsRef<Path>>(dir: P) -> Result<Vec<Self>> {
         let mut result = Vec::new();
+
+        // Check that the path exists
+        if !dir.as_ref().is_dir() {
+            return Err(Error::DirNotExist(dir.as_ref().to_path_buf()));
+        }
 
         // Look for existing files in the `dir` dir with extension EXT and add 
         // them to `result`
@@ -93,6 +100,7 @@ impl_from_dir!(Object, &["o", "obj"]);
 // Returns the direct dependencies `Vec<Header>` of a `Header` or a `Source`
 // given the actual `path` of the file to extract dependencies, the expected
 // extensions to find and the list of possible dependencies
+//
 // TODO: allow detecting "#include "something.c"
 macro_rules! direct_dependencies {
     ($path:expr, $dep_exts:expr, $deps:expr) => {{
@@ -135,9 +143,7 @@ macro_rules! direct_dependencies {
     }};
 }
 
-/// An abstraction around the build process of a crate, in the future this
-/// might be just a trait with a check and build method to allow different 
-/// types of crates
+/// This let us build given a config a project
 #[derive(Clone)]
 pub struct Build<'a> {
     /// Configs of the project extracted from the cli and the `Amargo.toml` config file
@@ -160,7 +166,7 @@ pub struct Build<'a> {
     /// indexed by the indices of the virtual vector `sources` + `headers`
     dependency_graph: Vec<Vec<usize>>,
 
-    /// Contains the last build time (if exists)
+    /// Contains the last build time of the last target (if exists)
     last_time: Option<SystemTime>,
 
     /// The tool used for compilation, abstraction over the compiler, this
@@ -174,7 +180,7 @@ pub struct Build<'a> {
 
 impl<'a> Build<'a> {
     /// Construct a new instance of a blank set of configurations
-    pub fn new(config: &'a ProjectConfig, mode: BuildType) -> Result<Build<'a>, Error> {
+    pub fn new(config: &'a ProjectConfig, mode: BuildType) -> Result<Build<'a>> {
         let project_name = &config.config.as_ref().unwrap().project.name;
 
         // Push compiler args depending on the `mode`
@@ -187,6 +193,7 @@ impl<'a> Build<'a> {
         }
 
         // Create the "default" `Build` struct
+        //
         // TODO: check if ..Default::default() works
         let mut build = Build {
             config,
@@ -229,8 +236,8 @@ impl<'a> Build<'a> {
     }
 
     /// Add a directory to lookup sources
-    pub fn files<P: AsRef<Path>>(&mut self, files_dir: P) 
-            -> Result<&mut Build<'a>, Error> {
+    #[inline]
+    pub fn files<P: AsRef<Path>>(&mut self, files_dir: P) -> Result<&mut Build<'a>> {
         let dir = self.config.working_dir.join(files_dir);
         self.sources.extend(Source::from_dir(dir)?);
 
@@ -240,11 +247,8 @@ impl<'a> Build<'a> {
     }
     
     /// Add include dir
-    /// TODO: Check if it exists because it can be provided by a config file
-    /// in the future
     #[inline]
-    pub fn include<P: AsRef<Path>>(&mut self, dir: P) 
-            -> Result<&mut Build<'a>, Error> {
+    pub fn include<P: AsRef<Path>>(&mut self, dir: P) -> Result<&mut Build<'a>> {
         let dir = self.config.working_dir.join(dir);
         self.header_dirs.push(dir.clone());
         self.headers.extend(Header::from_dir(dir)?);
@@ -255,8 +259,12 @@ impl<'a> Build<'a> {
     }
 
     /// Compile the sources to objects (if they need to)
-    pub fn compile(&mut self) -> Result<&mut Build<'a>, Error> {
+    pub fn compile(&mut self) -> Result<&mut Build<'a>> {
         // Just do the incremental compilation if this is not the first build
+        //
+        // Representing the dependencies as a graph and updating the source `.modif` to
+        // the bigger `.modif` of him within his dependencies, then sorting the sources
+        // thet need compilation
         if let Some(last_time) = self.last_time {
             // Initialize the dependency_graph full of 0s (falses)
             let size = self.sources.len() + self.headers.len();
@@ -301,11 +309,11 @@ impl<'a> Build<'a> {
                 // Set the track of the max `SystemTime` detected
                 let old_modif = self.sources[src_idx].modif;
 
-                while stack.len() != 0 {
+                while !stack.is_empty() {
                     let i = stack.pop_front().unwrap();
 
                     // Check if this node has already been visited
-                    if visited[i] == true { continue; }
+                    if visited[i] { continue; }
 
                     // Set as visited
                     visited[i] = true;
@@ -340,6 +348,7 @@ impl<'a> Build<'a> {
         // Compile all the sources and place them in `self.out_dir` the 
         // already configured tool will take care of providing a correct 
         // command
+        //
         // TODO: Compile in parallel according to the avaible threads
         let mut childs = Vec::new();
         for chunk in self.sources.chunks(4) {
@@ -356,14 +365,12 @@ impl<'a> Build<'a> {
 
                 let cmd = command.arg(&out_file).arg(&source.path);
                 childs.push(cmd.spawn()
-                    .map_err(|e| 
-                        Error::ProcessCreation(self.tool.path.clone(), e))?);
+                    .map_err(|e| Error::ProcessCreation(self.tool.path.clone(), e))?);
                 
                 // Wait for each thread to finish
                 for child in childs.iter_mut() {
-                    if !child.wait()
-                        .map_err(|e| Error::ProcessExec(e))?.success() {
-                        return Err(Error::CompilationError);
+                    if !child.wait().map_err(Error::ProcessExec)?.success() {
+                        return Err(Error::Compilation);
                     }
                 }
             }
@@ -374,7 +381,7 @@ impl<'a> Build<'a> {
 
     /// Links the objects (if needed) and returns a boolean indicating if it
     /// wasn't needed to link the executable or not
-    pub fn link(&mut self) -> Result<bool, Error> {
+    pub fn link(&mut self) -> Result<bool> {
         let project_name = &self.config.config.as_ref().unwrap().project.name;
 
         // Extract all the objects again (but now they should be recompiled)
@@ -396,10 +403,10 @@ impl<'a> Build<'a> {
         info!("Linking {:?}", &target_path);
 
         // Link everything into an executable
+        //
+        // TODO: Capture output and parse it
         let mut command = self.tool
             .to_link_command(target_path, &self.objects);
-
-        // TODO: Capture output and parse it
         command.status().map_err(|e| 
             Error::ProcessCreation(self.tool.path.clone(), e))?;
 

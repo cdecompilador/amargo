@@ -2,10 +2,15 @@ use std::{
     path::PathBuf
 };
 
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// Error type used in the program
 /// TODO: Use some macro crate so the displayed message on panic is better
 #[derive(Debug)]
 pub enum Error {
+    /// Returned when trying to access a directory that does not exist
+    DirNotExist(PathBuf),
+
     /// The current dir is invalid (not enough perms or just it does not exist)
     CurrentDirInvalid(PathBuf, std::io::Error),
 
@@ -24,7 +29,7 @@ pub enum Error {
     /// not an amargo project
     NotAProject(PathBuf),
 
-    /// Cannot read a certain file
+    /// Cannot read a certain file or folder
     CannotRead(PathBuf, std::io::Error),
 
     /// While recursive listing files in `src` or `include` some unexpected io
@@ -45,7 +50,7 @@ pub enum Error {
     ///
     /// TODO: For the moment this contains nothing, but in the future I'd like
     /// the tool to have a check subcommand like cargo that statically checks 
-    CompilationError,
+    Compilation,
 
     /// Couldn't find a default compiler
     ///
