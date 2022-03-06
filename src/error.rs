@@ -1,6 +1,4 @@
-use std::{
-    path::PathBuf
-};
+use std::path::PathBuf;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -17,16 +15,16 @@ pub enum Error {
     /// Invalid new project path
     InvalidProjectPath(PathBuf),
 
-    /// Impossible to create an object (also used in case is impossible to 
+    /// Impossible to create an object (also used in case is impossible to
     /// create and then write)
     CannotCreate(PathBuf, std::io::Error),
 
-    /// Impossible to create an object (also used in case is impossible to 
+    /// Impossible to create an object (also used in case is impossible to
     /// create and then write)
     CannotRemove(PathBuf, std::io::Error),
 
-    /// While building, running or checking the program has relized that this is
-    /// not an amargo project
+    /// While building, running or checking the program has relized that this
+    /// is not an amargo project
     NotAProject(PathBuf),
 
     /// Cannot read a certain file or folder
@@ -49,7 +47,7 @@ pub enum Error {
     /// Error while compilating
     ///
     /// TODO: For the moment this contains nothing, but in the future I'd like
-    /// the tool to have a check subcommand like cargo that statically checks 
+    /// the tool to have a check subcommand like cargo that statically checks
     Compilation,
 
     /// Couldn't find a default compiler
@@ -60,9 +58,7 @@ pub enum Error {
 
     /// Project couldn't be linked (provide an explanation)
     ///
-    /// TODO: Instead of a String use a new Error type only for linking errors, this
-    /// should be done when output parsing is avaible
+    /// TODO: Instead of a String use a new Error type only for linking errors,
+    /// this should be done when output parsing is avaible
     CannotLink(String),
 }
-
-
