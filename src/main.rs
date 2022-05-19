@@ -26,7 +26,7 @@ use log::info;
 // Import the template dirs
 const C_BINARY_TEMPLATE: Dir = include_dir!("./templates/c/binary");
 const CPP_BINARY_TEMPLATE: Dir = include_dir!("./templates/cpp/library");
-const C_LIBRARY_TEMPLATE: Dir = include_dir!("./templates/c/binary");
+const C_LIBRARY_TEMPLATE: Dir = include_dir!("./templates/c/library");
 const CPP_LIBRARY_TEMPLATE: Dir = include_dir!("./templates/cpp/library");
 
 // The extension of the executable is platform dependent
