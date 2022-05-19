@@ -11,7 +11,7 @@ The philosophy of this project is from something simple then be able to expand t
 To install the tool, clone this repository and run `cargo install --path .`, it should work ! (This solution is by waiting pushing real releases on this Github repository)
  
 - Create a simple binary app : `amargo new <my_app>`
-- Create a dynamic library : `amargo new <my_lib> --dylib`
+- Create a dynamic library : `amargo new <my_lib> -- dynamic`
 - Test stuff in "tests/" : `amargo test`
 - Common build command : `amargo build` or `amargo release`
 - Install locally : `amargo install`
@@ -35,6 +35,7 @@ To install the tool, clone this repository and run `cargo install --path .`, it 
 - ❌ Support tests<br>
 - ❌ Support C++<br>
 - ❌ Maybe external dependencies? (using vcpkg or a custom dependency system)<br>
- 
+- ❌ The path of the project isn't the the project's name (example : "/a/b/c" -> "c") 
+
 ## Contribution
 Please help me, through the code there are a lot of TODOs if you wanna help, but please comment a lot what you do and don't be afraid of creating new TODOs.
