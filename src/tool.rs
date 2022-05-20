@@ -6,8 +6,9 @@ use std::{
 
 use crate::{build::Object, error::*};
 
-/// Find an avaible tool on the system
-/// TODO: On windows try to put mscv on the environment first
+/// Retrieve the full compiler path according to which compiler is available
+/// on the computer. \
+/// Priority : MSVC (clang, clang-cl, cl); GNU (gcc)
 fn find_tool() -> Result<(PathBuf, ToolFamily)> {
     // Macro that checks if command exists
     macro_rules! exists_command {
@@ -16,34 +17,27 @@ fn find_tool() -> Result<(PathBuf, ToolFamily)> {
         };
     }
 
-    // Check with priorities, and retrieve the full compiler path and the
-    // ToolFamily
-    //  * first: clang,
-    //  * second: Windows -> clang-cl _ -> Gnu
-    //  * third Windows -> msvc
+    // TODO : On windows try to put mscv on the environment first
     if exists_command!("clang") {
-        Ok((which::which("clang").unwrap(), ToolFamily::Clang))
-    } else if cfg!(target_os = "windows") {
-        if exists_command!("clang-cl") {
-            Ok((
-                which::which("clang-cl").unwrap(),
-                ToolFamily::Msvc { clang_cl: true },
-            ))
-        } else if exists_command!("cl") {
-            Ok((
-                which::which("cl").unwrap(),
-                ToolFamily::Msvc { clang_cl: false },
-            ))
-        } else if exists_command!("gcc") {
-            Ok((which::which("gcc").unwrap(), ToolFamily::Gnu))
-        } else {
-            Err(Error::NoCompilerFound)
-        }
-    } else if exists_command!("gcc") {
-        Ok((which::which("gcc").unwrap(), ToolFamily::Gnu))
-    } else {
-        Err(Error::NoCompilerFound)
+        return Ok((which::which("clang").unwrap(), ToolFamily::Clang));
     }
+    if exists_command!("clang-cl") {
+        return Ok((
+            which::which("clang-cl").unwrap(),
+            ToolFamily::Msvc { clang_cl: true },
+        ));
+    }
+    if exists_command!("cl") {
+        return Ok((
+            which::which("cl").unwrap(),
+            ToolFamily::Msvc { clang_cl: false },
+        ));
+    }
+    if exists_command!("gcc") {
+        return Ok((which::which("gcc").unwrap(), ToolFamily::Gnu));
+    }
+
+    Err(Error::NoCompilerFound)
 }
 
 /// Configuration used to represent an invocation of a C compiler (or another
