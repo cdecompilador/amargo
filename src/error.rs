@@ -5,6 +5,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Error type used in the program
 /// TODO: Use some macro crate so the displayed message on panic is better
 #[derive(Debug)]
+#[allow(unused)]
 pub enum Error {
     /// Returned when trying to access a directory that does not exist
     DirNotExist(PathBuf),

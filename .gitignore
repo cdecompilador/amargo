@@ -1,2 +1,4 @@
 /target
+tests/*
+!tests/tests.sh
 rustfmt.toml

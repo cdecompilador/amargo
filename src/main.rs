@@ -24,14 +24,18 @@ use include_dir::{include_dir, Dir};
 use log::info;
 
 // Import the template dirs
-// TODO: Add the rest
-const BINARY_TEMPLATE: Dir = include_dir!("./templates/binary");
+const C_BINARY_TEMPLATE: Dir = include_dir!("./templates/c/binary");
+const CPP_BINARY_TEMPLATE: Dir = include_dir!("./templates/cpp/binary");
+const C_LIBRARY_TEMPLATE: Dir = include_dir!("./templates/c/library");
+const CPP_LIBRARY_TEMPLATE: Dir = include_dir!("./templates/cpp/library");
 
 // The extension of the executable is platform dependent
 #[cfg(target_os = "windows")]
 const EXE_EXTENSION: &str = "exe";
-#[cfg(not(target_os = "windows"))]
-const EXE_EXTENSION: &str = "out";
+#[cfg(target_os = "linux")]
+const EXE_EXTENSION: &str = ""; // no extension for Linux platform
+#[cfg(target_os = "macos")]
+const EXE_EXTENSION: &str = "app"; // could be nothing like Linux/Unix
 
 /// Create a project with the given configuration and kind
 fn create_project(
@@ -50,7 +54,9 @@ fn create_project(
 
     // Extract the project template on `project_path`
     match project_type {
-        ProjectType::Binary => BINARY_TEMPLATE.extract(&project_path),
+        ProjectType::Binary => C_BINARY_TEMPLATE.extract(&project_path),
+        ProjectType::StaticLib 
+            | ProjectType::DynamicLib => C_LIBRARY_TEMPLATE.extract(&project_path), 
         p => todo!("Project type {} not implemented yet", p),
     }
     .map_err(|e| Error::CannotCreate(project_path.clone(), e))?;
